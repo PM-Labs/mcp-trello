@@ -1,4 +1,5 @@
 # MCP Server Trello
+[![smithery badge](https://smithery.ai/badge/@modelcontextprotocol/mcp-server-trello)](https://smithery.ai/server/@modelcontextprotocol/mcp-server-trello)
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Trello boards. This server enables seamless integration with Trello's API while handling rate limiting, type safety, and error handling automatically.
 
@@ -12,6 +13,15 @@ A Model Context Protocol (MCP) server that provides tools for interacting with T
 
 ## Installation
 
+### Installing via Smithery
+
+To install Trello Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@modelcontextprotocol/mcp-server-trello):
+
+```bash
+npx -y @smithery/cli install @modelcontextprotocol/mcp-server-trello --client claude
+```
+
+### Manual Installation
 ```bash
 npm install @modelcontextprotocol/mcp-server-trello
 ```
