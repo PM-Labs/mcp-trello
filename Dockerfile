@@ -5,16 +5,19 @@ FROM node:16-alpine AS builder
 # Set the working directory to /app
 WORKDIR /app
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 # Copy package files first to leverage Docker cache
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies)
-RUN npm ci
+RUN SKIP_PREPARE=true npm ci
 
 # Copy the rest of the code
 COPY . .
 
-# Build the project
+# Build TypeScript
 RUN npm run build
 
 # Use a smaller Node.js runtime for production
@@ -28,7 +31,7 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
 
 # Install only production dependencies without running scripts
-RUN npm ci --omit=dev --ignore-scripts
+RUN SKIP_PREPARE=true npm ci --omit=dev --ignore-scripts
 
 # The environment variables should be passed at runtime, not baked into the image
 # They can be provided via docker run -e or docker compose environment section
