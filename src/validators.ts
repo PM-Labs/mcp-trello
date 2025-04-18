@@ -115,3 +115,13 @@ export function validateArchiveListRequest(args: Record<string, unknown>): { lis
     listId: validateString(args.listId, 'listId'),
   };
 }
+
+export function validateMoveCardRequest(args: Record<string, unknown>): { cardId: string; listId: string } {
+  if (!args.cardId || !args.listId) {
+    throw new McpError(ErrorCode.InvalidParams, 'cardId and listId are required');
+  }
+  return {
+    cardId: validateString(args.cardId, 'cardId'),
+    listId: validateString(args.listId, 'listId'),
+  };
+}

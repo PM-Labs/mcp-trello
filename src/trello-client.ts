@@ -109,6 +109,15 @@ export class TrelloClient {
     });
   }
 
+  async moveCard(cardId: string, listId: string): Promise<TrelloCard> {
+    return this.handleRequest(async () => {
+      const response = await this.axiosInstance.put(`/cards/${cardId}`, {
+        idList: listId,
+      });
+      return response.data;
+    });
+  }
+
   async addList(name: string): Promise<TrelloList> {
     return this.handleRequest(async () => {
       const response = await this.axiosInstance.post('/lists', {
