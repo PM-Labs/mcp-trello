@@ -4,6 +4,17 @@ A Model Context Protocol (MCP) server that provides tools for interacting with T
 
 <a href="https://glama.ai/mcp/servers/klqkamy7wt"><img width="380" height="200" src="https://glama.ai/mcp/servers/klqkamy7wt/badge" alt="Server Trello MCP server" /></a>
 
+## Changelog
+
+### 0.1.1
+
+- Added `move_card` tool to move cards between lists
+- Improved documentation
+
+### 0.1.0
+
+- Initial release with basic Trello board management features
+
 ## Features
 
 - **Full Trello Board Integration**: Interact with cards, lists, and board activities
@@ -15,7 +26,7 @@ A Model Context Protocol (MCP) server that provides tools for interacting with T
 ## Installation
 
 ```bash
-npm install @modelcontextprotocol/server-trello
+npm install @delorenj/mcp-server-trello
 ```
 
 ## Configuration
@@ -27,7 +38,7 @@ Add the server to your MCP settings file with the following configuration:
   "mcpServers": {
     "trello": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-trello"],
+      "args": ["-y", "@delorenj/mcp-server-trello"],
       "env": {
         "TRELLO_API_KEY": "your-api-key",
         "TRELLO_TOKEN": "your-token",
@@ -40,13 +51,14 @@ Add the server to your MCP settings file with the following configuration:
 
 ### Required Environment Variables
 
-- `TRELLO_API_KEY`: Your Trello API key (get from https://trello.com/app-key)
+- `TRELLO_API_KEY`: Your Trello API key (get from <https://trello.com/app-key>)
 - `TRELLO_TOKEN`: Your Trello token (generate using your API key)
 - `TRELLO_BOARD_ID`: ID of the Trello board to interact with (found in board URL)
 
 ## Available Tools
 
 ### get_cards_by_list_id
+
 Fetch all cards from a specific list.
 
 ```typescript
@@ -59,6 +71,7 @@ Fetch all cards from a specific list.
 ```
 
 ### get_lists
+
 Retrieve all lists from the configured board.
 
 ```typescript
@@ -69,6 +82,7 @@ Retrieve all lists from the configured board.
 ```
 
 ### get_recent_activity
+
 Fetch recent activity on the board.
 
 ```typescript
@@ -81,6 +95,7 @@ Fetch recent activity on the board.
 ```
 
 ### add_card_to_list
+
 Add a new card to a specified list.
 
 ```typescript
@@ -97,6 +112,7 @@ Add a new card to a specified list.
 ```
 
 ### update_card_details
+
 Update an existing card's details.
 
 ```typescript
@@ -113,6 +129,7 @@ Update an existing card's details.
 ```
 
 ### archive_card
+
 Send a card to the archive.
 
 ```typescript
@@ -125,6 +142,7 @@ Send a card to the archive.
 ```
 
 ### add_list_to_board
+
 Add a new list to the board.
 
 ```typescript
@@ -137,6 +155,7 @@ Add a new list to the board.
 ```
 
 ### archive_list
+
 Send a list to the archive.
 
 ```typescript
@@ -149,6 +168,7 @@ Send a list to the archive.
 ```
 
 ### get_my_cards
+
 Fetch all cards assigned to the current user.
 
 ```typescript
@@ -158,9 +178,24 @@ Fetch all cards assigned to the current user.
 }
 ```
 
+### move_card
+
+Move a card to a different list.
+
+```typescript
+{
+  name: 'move_card',
+  arguments: {
+    cardId: string,  // ID of the card to move
+    listId: string   // ID of the target list
+  }
+}
+```
+
 ## Rate Limiting
 
 The server implements a token bucket algorithm for rate limiting to comply with Trello's API limits:
+
 - 300 requests per 10 seconds per API key
 - 100 requests per 10 seconds per token
 
@@ -169,6 +204,7 @@ Rate limiting is handled automatically, and requests will be queued if limits ar
 ## Error Handling
 
 The server provides detailed error messages for various scenarios:
+
 - Invalid input parameters
 - Rate limit exceeded
 - API authentication errors
@@ -185,30 +221,28 @@ The server provides detailed error messages for various scenarios:
 ### Setup
 
 1. Clone the repository
+
 ```bash
-git clone https://github.com/modelcontextprotocol/server-trello.git
-cd server-trello
+git clone https://github.com/delorenj/mcp-server-trello
+cd mcp-server-trello
 ```
 
 2. Install dependencies
+
 ```bash
 npm install
 ```
 
 3. Build the project
+
 ```bash
 npm run build
 ```
 
-### Running Tests
-
-```bash
-npm test
-```
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Contributions are welcome!
 
 ## License
 

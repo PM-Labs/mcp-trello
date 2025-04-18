@@ -16,6 +16,7 @@ import {
   validateArchiveCardRequest,
   validateAddListRequest,
   validateArchiveListRequest,
+  validateMoveCardRequest,
 } from './validators.js';
 
 class TrelloServer {
@@ -36,7 +37,7 @@ class TrelloServer {
     this.server = new Server(
       {
         name: 'trello-server',
-        version: '0.1.0',
+        version: '0.1.1',
       },
       {
         capabilities: {
@@ -176,6 +177,24 @@ class TrelloServer {
           },
         },
         {
+          name: 'move_card',
+          description: 'Move a card to a different list',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              cardId: {
+                type: 'string',
+                description: 'ID of the card to move',
+              },
+              listId: {
+                type: 'string',
+                description: 'ID of the target list',
+              },
+            },
+            required: ['cardId', 'listId'],
+          },
+        },
+        {
           name: 'add_list_to_board',
           description: 'Add a new list to the board',
           inputSchema: {
@@ -266,6 +285,14 @@ class TrelloServer {
           case 'archive_card': {
             const validArgs = validateArchiveCardRequest(args);
             const card = await this.trelloClient.archiveCard(validArgs.cardId);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(card, null, 2) }],
+            };
+          }
+
+          case 'move_card': {
+            const validArgs = validateMoveCardRequest(args);
+            const card = await this.trelloClient.moveCard(validArgs.cardId, validArgs.listId);
             return {
               content: [{ type: 'text', text: JSON.stringify(card, null, 2) }],
             };
