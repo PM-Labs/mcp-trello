@@ -5,11 +5,14 @@ FROM node:16-alpine AS builder
 # Set the working directory to /app
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . .
+# Copy package files first to leverage Docker cache
+COPY package*.json ./
 
-# Install any needed packages
-RUN npm install
+# Install all dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy the rest of the code
+COPY . .
 
 # Build the project
 RUN npm run build
@@ -20,18 +23,16 @@ FROM node:16-alpine AS release
 # Set the working directory to /app
 WORKDIR /app
 
-# Copy the built files from the builder stage
-COPY --from=builder /app/build /app/build
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/package-lock.json /app/package-lock.json
+# Copy only the necessary files from builder
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package*.json ./
 
-# Install only production dependencies
-RUN npm ci --production
+# Install only production dependencies without running scripts
+RUN npm ci --omit=dev --ignore-scripts
 
-# Set environment variables required by the MCP server
-ENV TRELLO_API_KEY=your-api-key
-ENV TRELLO_TOKEN=your-token
-ENV TRELLO_BOARD_ID=your-board-id
+# The environment variables should be passed at runtime, not baked into the image
+# They can be provided via docker run -e or docker compose environment section
+ENV NODE_ENV=production
 
 # Run the MCP server
 CMD ["node", "build/index.js"]

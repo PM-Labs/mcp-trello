@@ -7,6 +7,13 @@ A Model Context Protocol (MCP) server that provides tools for interacting with T
 
 ## Changelog
 
+### 0.1.2
+
+- Added Docker support with multi-stage build
+- Improved security by moving environment variables to `.env`
+- Added Docker Compose configuration
+- Added `.env.template` for easier setup
+
 ### 0.1.1
 
 - Added `move_card` tool to move cards between lists
@@ -26,6 +33,26 @@ A Model Context Protocol (MCP) server that provides tools for interacting with T
 
 ## Installation
 
+### Docker Installation (Recommended)
+
+The easiest way to run the server is using Docker:
+
+1. Clone the repository:
+```bash
+git clone https://github.com/delorenj/mcp-server-trello
+cd mcp-server-trello
+```
+
+2. Copy the environment template and fill in your Trello credentials:
+```bash
+cp .env.template .env
+```
+
+3. Build and run with Docker Compose:
+```bash
+docker compose up --build
+```
+
 ### Installing via Smithery
 
 To install Trello Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@modelcontextprotocol/mcp-server-trello):
@@ -41,29 +68,18 @@ npm install @delorenj/mcp-server-trello
 
 ## Configuration
 
-Add the server to your MCP settings file with the following configuration:
+The server can be configured using environment variables. Create a `.env` file in the root directory with the following variables:
 
-```json
-{
-  "mcpServers": {
-    "trello": {
-      "command": "npx",
-      "args": ["-y", "@delorenj/mcp-server-trello"],
-      "env": {
-        "TRELLO_API_KEY": "your-api-key",
-        "TRELLO_TOKEN": "your-token",
-        "TRELLO_BOARD_ID": "your-board-id"
-      }
-    }
-  }
-}
+```env
+TRELLO_API_KEY=your-api-key
+TRELLO_TOKEN=your-token
+TRELLO_BOARD_ID=your-board-id
 ```
 
-### Required Environment Variables
-
-- `TRELLO_API_KEY`: Your Trello API key (get from <https://trello.com/app-key>)
-- `TRELLO_TOKEN`: Your Trello token (generate using your API key)
-- `TRELLO_BOARD_ID`: ID of the Trello board to interact with (found in board URL)
+You can get these values from:
+- API Key: https://trello.com/app-key
+- Token: Generate using your API key
+- Board ID: Found in the board URL
 
 ## Available Tools
 
