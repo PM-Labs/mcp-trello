@@ -37,7 +37,7 @@ class TrelloServer {
     this.server = new Server(
       {
         name: 'trello-server',
-        version: '0.1.0',
+        version: '0.1.1',
       },
       {
         capabilities: {

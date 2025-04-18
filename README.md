@@ -2,6 +2,15 @@
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Trello boards. This server enables seamless integration with Trello's API while handling rate limiting, type safety, and error handling automatically.
 
+## Changelog
+
+### 0.1.1
+- Added `move_card` tool to move cards between lists
+- Improved documentation
+
+### 0.1.0
+- Initial release with basic Trello board management features
+
 ## Features
 
 - **Full Trello Board Integration**: Interact with cards, lists, and board activities
@@ -153,6 +162,19 @@ Fetch all cards assigned to the current user.
 {
   name: 'get_my_cards',
   arguments: {}
+}
+```
+
+### move_card
+Move a card to a different list.
+
+```typescript
+{
+  name: 'move_card',
+  arguments: {
+    cardId: string,  // ID of the card to move
+    listId: string   // ID of the target list
+  }
 }
 ```
 
