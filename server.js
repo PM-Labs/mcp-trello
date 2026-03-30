@@ -64,7 +64,7 @@ app.post('/oauth/token', (req, res) => {
         if (expected !== stored.codeChallenge) { res.status(400).json({ error: 'invalid_grant' }); return; }
         if (redirect_uri && redirect_uri !== stored.redirectUri) { res.status(400).json({ error: 'invalid_grant' }); return; }
         delete authCodes[code];
-        res.json({ access_token: AUTH_TOKEN, token_type: 'Bearer', expires_in: 86400 });
+        res.json({ access_token: AUTH_TOKEN, token_type: 'Bearer', expires_in: 2592000 });
         return;
     }
     if (!OAUTH_CLIENT_SECRET) { res.status(500).json({ error: 'server_misconfigured' }); return; }
@@ -76,7 +76,7 @@ app.post('/oauth/token', (req, res) => {
         client_id = decoded.slice(0, colon); client_secret = decoded.slice(colon + 1);
     } else { client_id = req.body.client_id; client_secret = req.body.client_secret; }
     if (client_id !== OAUTH_CLIENT_ID || client_secret !== OAUTH_CLIENT_SECRET) { res.status(401).json({ error: 'invalid_client' }); return; }
-    res.json({ access_token: AUTH_TOKEN, token_type: 'Bearer', expires_in: 86400 });
+    res.json({ access_token: AUTH_TOKEN, token_type: 'Bearer', expires_in: 2592000 });
 });
 
 // --- Bearer token middleware ---
