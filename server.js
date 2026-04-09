@@ -18,8 +18,6 @@ app.use(express.urlencoded({ extended: false }));
 
 // Sessions: sessionId -> { proc, pending: Map<id, resolver>, buffer, timer }
 const sessions = new Map();
-// Remap stale session IDs (from before container restart) to active ones
-const sessionMap = new Map();
 const SESSION_TTL = 30 * 60 * 1000;
 
 // --- OAuth 2.0 PKCE routes ---
@@ -160,56 +158,39 @@ function sendRequest(session, message) {
 }
 
 app.post('/mcp', async (req, res) => {
-  let sessionId = req.headers['mcp-session-id'];
+  const sessionId = req.headers['mcp-session-id'];
+  const isInit = req.body?.method === 'initialize';
   let session;
+  let activeId = sessionId;
 
   if (sessionId && sessions.has(sessionId)) {
-    // Active session found directly
+    // Known active session — reuse.
     session = sessions.get(sessionId);
     resetTTL(sessionId, session);
-  } else if (sessionId && sessionMap.has(sessionId)) {
-    // Stale session ID — remap to active session
-    const activeId = sessionMap.get(sessionId);
-    if (sessions.has(activeId)) {
-      console.log(`[SESSION] Remapped stale ${sessionId} -> active ${activeId}`);
-      session = sessions.get(activeId);
-      sessionId = activeId;
-      resetTTL(sessionId, session);
-    } else {
-      // Mapped target is also gone — create fresh
-      console.log(`[SESSION] Mapped target ${activeId} expired, creating new session for stale ${sessionId}`);
-      sessionMap.delete(sessionId);
-      const newId = randomUUID();
-      session = createSession(newId);
-      sessionMap.set(sessionId, newId);
-      // Cap sessionMap at 100 entries
-      if (sessionMap.size > 100) {
-        const oldest = sessionMap.keys().next().value;
-        sessionMap.delete(oldest);
-      }
-      console.log(`[SESSION] Created ${newId} for stale ${sessionId} (sessionMap size: ${sessionMap.size})`);
-      sessionId = newId;
-    }
+  } else if (!sessionId && isInit) {
+    // Fresh initialize — spawn a new child.
+    activeId = randomUUID();
+    session = createSession(activeId);
+    console.log(`[SESSION] New session ${activeId}`);
   } else if (sessionId) {
-    // Unknown session ID (e.g. after container restart) — create new and map
-    const newId = randomUUID();
-    session = createSession(newId);
-    sessionMap.set(sessionId, newId);
-    // Cap sessionMap at 100 entries
-    if (sessionMap.size > 100) {
-      const oldest = sessionMap.keys().next().value;
-      sessionMap.delete(oldest);
-    }
-    console.log(`[SESSION] New session ${newId} for unknown stale ID ${sessionId} (sessionMap size: ${sessionMap.size})`);
-    sessionId = newId;
+    // Unknown session id — return 404 per MCP spec. A well-behaved client
+    // will reinitialize. Do NOT silently spawn a replacement child — see
+    // PM-Labs/mcp-playwright@1d75780 for root-cause analysis.
+    return res.status(404).json({
+      jsonrpc: '2.0',
+      error: { code: -32001, message: 'Session not found' },
+      id: req.body?.id ?? null
+    });
   } else {
-    // No session ID provided — fresh session
-    sessionId = randomUUID();
-    session = createSession(sessionId);
-    console.log(`[SESSION] Brand new session ${sessionId}`);
+    // No session id and not initialize — malformed.
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
+      id: req.body?.id ?? null
+    });
   }
 
-  res.setHeader('mcp-session-id', sessionId);
+  res.setHeader('mcp-session-id', activeId);
 
   const body = req.body;
 
