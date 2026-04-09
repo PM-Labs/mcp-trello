@@ -96,7 +96,7 @@ app.use((req, res, next) => {
 });
 
 function createSession(sessionId) {
-  const bin = join(__dirname, 'node_modules', '.bin', 'mcp-server-trello');
+  const bin = join(__dirname, 'build', 'index.js');
   const proc = spawn('node', [bin], {
     env: { ...process.env },
     stdio: ['pipe', 'pipe', 'inherit'],
