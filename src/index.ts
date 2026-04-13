@@ -1171,6 +1171,76 @@ class TrelloServer {
       }
     );
 
+
+    // Custom field tools
+    this.server.registerTool(
+      'get_board_custom_fields',
+      {
+        title: 'Get Board Custom Fields',
+        description:
+          'List all custom field definitions on a board, including each fields id, name, type (text/number/date/checkbox/list), and options for dropdown fields',
+        inputSchema: {
+          boardId: z
+            .string()
+            .optional()
+            .describe('ID of the Trello board (uses default if not provided)'),
+        },
+      },
+      async ({ boardId }) => {
+        try {
+          const fields = await this.trelloClient.getBoardCustomFields(boardId);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(fields, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    this.server.registerTool(
+      'set_card_custom_field',
+      {
+        title: 'Set Card Custom Field',
+        description:
+          'Set a custom field value on a card. For text/number/date/checkbox fields, pass value (e.g. {text: "foo"}, {number: "2"}, {date: "2026-04-13T00:00:00.000Z"}, {checked: "true"}). For dropdown/list fields, pass idValue with an option id from get_board_custom_fields. Omit both value and idValue to clear the field.',
+        inputSchema: {
+          cardId: z.string().describe('ID of the Trello card'),
+          customFieldId: z
+            .string()
+            .describe('ID of the custom field definition (from get_board_custom_fields)'),
+          value: z
+            .object({
+              text: z.string().optional(),
+              number: z.string().optional(),
+              date: z.string().optional(),
+              checked: z.string().optional(),
+            })
+            .optional()
+            .describe('Value for text/number/date/checkbox fields'),
+          idValue: z
+            .string()
+            .optional()
+            .describe('Option ID for dropdown/list fields'),
+        },
+      },
+      async ({ cardId, customFieldId, value, idValue }) => {
+        try {
+          const result = await this.trelloClient.setCardCustomField(
+            cardId,
+            customFieldId,
+            value,
+            idValue
+          );
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
     // Card history tool
     this.server.registerTool(
       'get_card_history',

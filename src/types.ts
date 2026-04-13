@@ -152,6 +152,25 @@ export interface TrelloCustomField {
   value?: unknown;
 }
 
+export interface TrelloCustomFieldOption {
+  id: string;
+  idCustomField: string;
+  value: { text?: string };
+  color?: string;
+  pos?: number;
+}
+
+export interface TrelloCustomFieldDefinition {
+  id: string;
+  idModel: string;
+  modelType: string;
+  name: string;
+  pos?: number;
+  type: 'text' | 'number' | 'date' | 'checkbox' | 'list';
+  options?: TrelloCustomFieldOption[];
+  display?: { cardFront?: boolean };
+}
+
 export interface TrelloBadges {
   attachmentsByType?: {
     trello?: {

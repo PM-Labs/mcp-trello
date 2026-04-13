@@ -16,6 +16,7 @@ import {
   TrelloComment,
   TrelloMember,
   TrelloLabelDetails,
+  TrelloCustomFieldDefinition,
 } from './types.js';
 import { createTrelloRateLimiters } from './rate-limiter.js';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
@@ -1066,6 +1067,47 @@ export class TrelloClient {
       await this.axiosInstance.delete(`/labels/${labelId}`);
       return true;
     });
+  }
+
+
+  // Custom field methods
+  async getBoardCustomFields(
+    boardId?: string
+  ): Promise<TrelloCustomFieldDefinition[]> {
+    const effectiveBoardId = boardId || this.activeConfig.boardId || this.defaultBoardId;
+    if (!effectiveBoardId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'boardId is required when no default board is configured'
+      );
+    }
+    const response = await this.axiosInstance.get(
+      `/boards/${effectiveBoardId}/customFields`
+    );
+    return response.data;
+  }
+
+  async setCardCustomField(
+    cardId: string,
+    customFieldId: string,
+    value?: { text?: string; number?: string; date?: string; checked?: string },
+    idValue?: string
+  ): Promise<unknown> {
+    const body: { value?: object | string; idValue?: string } = {};
+    if (idValue !== undefined) {
+      // Dropdown/list field — use option id
+      body.idValue = idValue;
+    } else if (value !== undefined) {
+      body.value = value;
+    } else {
+      // Clear the field
+      body.value = '';
+    }
+    const response = await this.axiosInstance.put(
+      `/cards/${cardId}/customField/${customFieldId}/item`,
+      body
+    );
+    return response.data;
   }
 
   // Card history method
