@@ -1,3 +1,39 @@
+# Pathfinder Fork Notes
+
+> This is `PM-Labs/mcp-trello`, a fork of `delorenj/mcp-server-trello` deployed on the Pathfinder MCP droplet at `https://trello.mcp.pathfindermarketing.com.au/mcp`. Fork sync runs weekly via cron — keep the section below intact and add Pathfinder-specific notes here.
+
+## Custom field tools (added 2026-04-13)
+
+Two MCP tools wrap Trello's custom field API:
+
+- `get_board_custom_fields(boardId?)` → GET `/boards/{id}/customFields`. Returns each field's `id`, `name`, `type` (`text`/`number`/`date`/`checkbox`/`list`), and `options[]` for dropdowns.
+- `set_card_custom_field(cardId, customFieldId, value?, idValue?)` → PUT `/cards/{id}/customField/{idCustomField}/item`.
+  - **text/number/date/checkbox**: pass `value` as `{text: "..."}`, `{number: "2"}`, `{date: "2026-04-13T00:00:00.000Z"}`, or `{checked: "true"}` (note: number/checked are strings, per Trello API).
+  - **dropdown/list**: pass `idValue` (an option id from `get_board_custom_fields`).
+  - **clear**: omit both `value` and `idValue` — sends `value: ""`.
+
+Discover field/option IDs once via `get_board_custom_fields` and cache them in your skill — Trello custom field IDs are stable.
+
+## Conventions
+
+- **handleRequest generic constraint**: `private async handleRequest<T extends TrelloRequestReturn>` constrains return types to a fixed union. New methods that return types not in the union (like the custom field methods) call `axiosInstance` directly, bypassing rate-limit retry. If you need 429 retry on a new method, extend the `TrelloRequestReturn` union in `trello-client.ts`.
+- **Session handling**: this MCP must return HTTP 404 for unknown `Mcp-Session-Id` headers. Never implement session resurrection — see commit `31ea8bb` and the `feedback_mcp_no_session_resurrection` memory in the parent CLAUDE.md.
+- **Active board gotcha**: clients must call `set_active_board` at session start before list/checklist operations work. The default board is `5a5acc198f5a95afcac85314` (Pathfinder WIP).
+
+## Deploy
+
+Edit locally → push to `PM-Labs/mcp-trello@main` → on droplet:
+
+```bash
+ssh mcp-server "cd /opt/pmin-mcpinfrastructure/repos/mcp-trello && git pull --ff-only && \
+  cd /opt/pmin-mcpinfrastructure && bash scripts/check-repos-sync.sh trello && \
+  docker compose build trello && docker compose up -d trello"
+```
+
+Then reconnect the Trello MCP in claude.ai → Settings → Integrations to pick up new tool schemas.
+
+---
+
 # Claude Code Configuration - SPARC Development Environment
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
