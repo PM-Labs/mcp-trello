@@ -6,18 +6,19 @@ This MCP server is deployed to the Pathfinder DO droplet as a Docker container.
 
 | Field | Value |
 |---|---|
-| Droplet | `mcp-server` |
+| Droplet | `mcp-server` (SSH alias) |
 | Service name | `trello` |
 | URL | `https://trello.mcp.pathfindermarketing.com.au/mcp` |
-| Docker image | `australia-southeast1-docker.pkg.dev/pathfinder-383411/cloud-run-source-deploy/trello-mcp:latest` |
+| Docker image | `ghcr.io/pmlabs-org/mcp-trello:latest` |
 | Env file | `/opt/pmin-mcpinfrastructure/env/trello.env` |
 | Full docs | [PM-Labs/pmin-mcpinfrastructure](https://github.com/PM-Labs/pmin-mcpinfrastructure) -> `docs/runbooks/trello.md` |
 
 ## Deploy
 
 ```bash
-gcloud builds submit --tag australia-southeast1-docker.pkg.dev/pathfinder-383411/cloud-run-source-deploy/trello-mcp --project pathfinder-383411
-ssh mcp-server "cd /opt/pmin-mcpinfrastructure && docker compose pull trello && docker compose up -d trello"
+# Deployments are automated via CI — push to main triggers build + deploy.
+# Manual deploy (if needed):
+ssh mcp-server "cd /opt/pmin-mcpinfrastructure && docker compose pull trello && docker compose up -d --force-recreate trello"
 ```
 
 ## Rollback
