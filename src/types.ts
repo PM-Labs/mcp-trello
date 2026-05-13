@@ -112,6 +112,16 @@ export interface TrelloCheckItem {
   idMember?: string | null;
 }
 
+export interface TrelloCheckItemUpdate {
+  name?: string;
+  state?: 'complete' | 'incomplete';
+  pos?: number | 'top' | 'bottom';
+  due?: string | null;
+  dueReminder?: number | null;
+  idMember?: string | null;
+}
+
+
 export interface TrelloChecklist {
   id: string;
   name: string;
@@ -170,6 +180,7 @@ export interface TrelloCustomFieldDefinition {
   options?: TrelloCustomFieldOption[];
   display?: { cardFront?: boolean };
 }
+
 
 export interface TrelloBadges {
   attachmentsByType?: {

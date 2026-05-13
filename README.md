@@ -39,6 +39,7 @@ For a detailed list of changes, please refer to the [CHANGELOG.md](CHANGELOG.md)
 
 ## Installation
 
+<<<<<<< HEAD
 ### 🚀 Install from MCP Registry (Recommended)
 
 The MCP Server Trello is now available in the official MCP Registry\! MCP clients can automatically discover and install this server.
@@ -187,6 +188,42 @@ cp .env.template .env
 
 ```bash
 docker compose up --build
+=======
+This repository is distributed as a **BMAD-compatible skill package** for the
+Trello MCP server. Install the `skill/` directory through your agent's skill
+management workflow, or place it in the agent's skills directory.
+
+When an agent activates the skill, it follows `skill/SKILL.md`. On first use,
+the agent runs the bundled installer:
+
+```bash
+bash skill/scripts/install.sh
+```
+
+The installer builds the MCP server from `skill/assets/source/` when Bun is
+available. If Bun is unavailable, it falls back to the published Smithery
+install path for `@delorenj/mcp-server-trello` and creates the same local
+`build/index.js` command path used by the skill activation check.
+
+## Skill package structure
+
+The skill is the agent-facing entry point for this repository.
+
+- `skill/SKILL.md`: Activation, routing, and agent workflow rules.
+- `skill/scripts/install.sh`: First-run installer for the bundled server.
+- `skill/references/trello-mcp/`: Focused references for setup, tools,
+  workflows, and gotchas.
+- `skill/assets/source/`: Bundled MCP server source used for local builds.
+
+For AI agents, start with `skill/SKILL.md` rather than this README. The README
+is the human-facing overview; the skill references are the operational surface
+for tool selection and Trello workflow rules.
+
+Maintainers can refresh the bundled source before packaging with:
+
+```bash
+mise run package
+>>>>>>> upstream/main
 ```
 
 ## Configuration
@@ -205,8 +242,18 @@ TRELLO_BOARD_ID=your-board-id
 
 # Optional: Initial workspace ID (can be changed later using set_active_workspace)
 TRELLO_WORKSPACE_ID=your-workspace-id
+<<<<<<< HEAD
 ```
 
+=======
+
+# Optional: HTTPS proxy URL (for corporate proxies or restricted networks)
+https_proxy=http://your-proxy:8080
+```
+
+> **Proxy Support:** If you're behind a corporate proxy or in an environment that routes traffic through a proxy, set the `https_proxy` or `HTTPS_PROXY` environment variable. The server will automatically route all Trello API requests through the specified proxy.
+
+>>>>>>> upstream/main
 You can get these values from:
 
   - API Key: [https://trello.com/app-key](https://trello.com/app-key)
@@ -240,6 +287,67 @@ This allows you to work with multiple boards and workspaces without restarting t
 {
   name: 'list_boards',
   arguments: {}
+<<<<<<< HEAD
+}
+```
+
+2.  Set your active board:
+
+<!-- end list -->
+
+```typescript
+{
+  name: 'set_active_board',
+  arguments: {
+    boardId: "abc123"  // ID from list_boards response
+  }
+}
+```
+
+3.  List workspaces if needed:
+
+<!-- end list -->
+
+```typescript
+{
+  name: 'list_workspaces',
+  arguments: {}
+}
+```
+
+4.  Set active workspace if needed:
+
+<!-- end list -->
+
+```typescript
+{
+  name: 'set_active_workspace',
+  arguments: {
+    workspaceId: "xyz789"  // ID from list_workspaces response
+  }
+}
+```
+
+5.  Check current active board info:
+
+<!-- end list -->
+
+```typescript
+{
+  name: 'get_active_board_info',
+  arguments: {}
+}
+```
+
+## Date Format Guidelines
+
+When working with dates in the Trello MCP server, please note the different format requirements:
+
+  - **Due Date (`dueDate`)**: Accepts full ISO 8601 format with time (e.g., `2023-12-31T12:00:00Z`)
+  - **Start Date (`start`)**: Accepts date only in YYYY-MM-DD format (e.g., `2025-08-05`)
+
+This distinction follows Trello's API conventions where start dates are day-based markers while due dates can include specific times.
+=======
 }
 ```
 
@@ -381,6 +489,41 @@ Get a complete checklist with all items and completion percentage.
   - `items`: Array of `CheckListItem` objects
   - `percentComplete`: Completion percentage (0-100)
 
+#### update\_checklist\_item
+
+Update an existing checklist item.
+
+```typescript
+{
+  name: 'update_checklist_item',
+  arguments: {
+    cardId: string,                          // ID of the card containing the checklist item
+    checkItemId: string,                     // ID of the checklist item to update
+    name?: string,                           // Optional: new checklist item text
+    state?: 'complete' | 'incomplete',       // Optional: new checklist item state
+    pos?: number | 'top' | 'bottom',         // Optional: new checklist item position
+    due?: string | null,                     // Optional: ISO 8601 due date, or null to clear it
+    dueReminder?: number | null,             // Optional: reminder offset in minutes, or null to clear it
+    idMember?: string | null                 // Optional: member ID to assign, or null to clear it
+  }
+}
+```
+
+#### delete\_checklist\_item
+
+Delete an existing checklist item.
+>>>>>>> upstream/main
+
+```typescript
+{
+  name: 'delete_checklist_item',
+  arguments: {
+    cardId: string,       // ID of the card containing the checklist item
+    checkItemId: string   // ID of the checklist item to delete
+  }
+}
+```
+
 ### get\_card 🆕
 
 Get comprehensive details of a specific Trello card with human-level parity.
@@ -408,6 +551,115 @@ Get comprehensive details of a specific Trello card with human-level parity.
 
 ### get\_cards\_by\_list\_id
 
+<<<<<<< HEAD
+### Checklist Management Tools 🆕
+
+#### get\_checklist\_items
+
+Get all items from a checklist by name.
+
+```typescript
+{
+  name: 'get_checklist_items',
+  arguments: {
+    name: string,        // Name of the checklist to retrieve items from
+    boardId?: string     // Optional: ID of the board (uses default if not provided)
+  }
+}
+```
+
+#### add\_checklist\_item
+
+Add a new item to an existing checklist.
+
+```typescript
+{
+  name: 'add_checklist_item',
+  arguments: {
+    text: string,           // Text content of the checklist item
+    checkListName: string,  // Name of the checklist to add the item to
+    boardId?: string        // Optional: ID of the board (uses default if not provided)
+  }
+}
+```
+
+#### find\_checklist\_items\_by\_description
+
+Search for checklist items containing specific text.
+
+```typescript
+{
+nbsp; name: 'find_checklist_items_by_description',
+  arguments: {
+    description: string,  // Text to search for in checklist item descriptions
+    boardId?: string      // Optional: ID of the board (uses default if not provided)
+nbsp; }
+}
+```
+
+#### get\_acceptance\_criteria
+
+Get all items from the "Acceptance Criteria" checklist.
+
+```typescript
+{
+  name: 'get_acceptance_criteria',
+  arguments: {
+    boardId?: string  // Optional: ID of the board (uses default if not provided)
+  }
+}
+```
+
+#### get\_checklist\_by\_name
+
+Get a complete checklist with all items and completion percentage.
+
+```typescript
+{
+  name: 'get_checklist_by_name',
+  arguments: {
+    name: string,     // Name of the checklist to retrieve
+    boardId?: string  // Optional: ID of the board (uses default if not provided)
+  }
+}
+```
+
+**Returns:** `CheckList` object with:
+
+  - `id`: Checklist identifier
+  - `name`: Checklist name
+  - `items`: Array of `CheckListItem` objects
+  - `percentComplete`: Completion percentage (0-100)
+
+### get\_card 🆕
+
+Get comprehensive details of a specific Trello card with human-level parity.
+
+```typescript
+{
+  name: 'get_card',
+  arguments: {
+    cardId: string,          // ID of the Trello card (short ID like 'FdhbArbK' or full ID)
+    includeMarkdown?: boolean // Return formatted markdown instead of JSON (default: false)
+  }
+}
+```
+
+**Returns:** Complete card data including:
+
+  - ✅ Checklists with item states and assignments
+  - 📎 Attachments with previews and metadata
+  - 🏷️ Labels with names and colors
+  - 👥 Assigned members
+  - 💬 Comments and activity
+  - 📊 Statistics (badges)
+  - 🎨 Cover images
+  - 📍 Board and list context
+
+### get\_cards\_by\_list\_id
+
+=======
+>>>>>>> upstream/main
 Fetch all cards from a specific list.
 
 ```typescript
@@ -525,6 +777,23 @@ Send a list to the archive.
     boardId?: string, // Optional: ID of the board (uses default if not provided)
     listId: string    // ID of the list to archive
   }
+<<<<<<< HEAD
+=======
+}
+```
+
+### update\_list\_position
+
+Update the position of a list on the board. Trello uses fractional indexing: each list has a float position, and to place a list between two others, use the average of their positions (e.g., between pos 1024 and 2048, use 1536). Use `"top"`/`"bottom"` shortcuts to move to the edges.
+
+```typescript
+{
+  name: 'update_list_position',
+  arguments: {
+    listId: string,              // ID of the list to reposition
+    position: string             // "top", "bottom", or a positive numeric string (e.g. "1536")
+  }
+>>>>>>> upstream/main
 }
 ```
 

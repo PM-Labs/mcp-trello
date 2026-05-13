@@ -30,7 +30,7 @@ class TrelloServer {
 
     this.server = new McpServer({
       name: 'trello-server',
-      version: '1.0.0',
+      version: '1.7.1',
     });
 
     this.setupTools();
@@ -68,11 +68,15 @@ class TrelloServer {
             .optional()
             .describe('ID of the Trello board (uses default if not provided)'),
           listId: z.string().describe('ID of the Trello list'),
+          fields: z
+            .string()
+            .optional()
+            .describe('Comma-separated list of fields to return (e.g., "name,idShort,labels,due,dueComplete"). Omit for all fields.'),
         },
       },
-      async ({ boardId, listId }) => {
+      async ({ listId, fields }) => {
         try {
-          const cards = await this.trelloClient.getCardsByList(boardId, listId);
+          const cards = await this.trelloClient.getCardsByList(listId, fields);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(cards, null, 2) }],
           };
@@ -123,11 +127,19 @@ class TrelloServer {
             .optional()
             .default(10)
             .describe('Number of activities to fetch (default: 10)'),
+          since: z
+            .string()
+            .optional()
+            .describe('Only return actions after this date (ISO 8601) or action ID'),
+          before: z
+            .string()
+            .optional()
+            .describe('Only return actions before this date (ISO 8601) or action ID'),
         },
       },
-      async ({ boardId, limit }) => {
+      async ({ boardId, limit, since, before }) => {
         try {
-          const activity = await this.trelloClient.getRecentActivity(boardId, limit);
+          const activity = await this.trelloClient.getRecentActivity(boardId, limit, since, before);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(activity, null, 2) }],
           };
@@ -319,6 +331,45 @@ class TrelloServer {
       }
     );
 
+    // Update list position
+    this.server.registerTool(
+      'update_list_position',
+      {
+        title: 'Update List Position',
+        description:
+          'Update the position of a list on the board. Trello uses fractional indexing: each list has a float position, and to place a list between two others, use the average of their positions (e.g., between pos 1024 and 2048, use 1536). Use "top"/"bottom" shortcuts to move to the edges.',
+        inputSchema: {
+          listId: z.string().describe('ID of the list to reposition'),
+          position: z
+            .string()
+            .refine(
+              (val) => {
+                if (val === 'top' || val === 'bottom') return true;
+                const num = Number(val);
+                return num > 0 && isFinite(num);
+              },
+              {
+                message: "Position must be 'top', 'bottom', or a positive finite numeric string.",
+              }
+            )
+            .describe(
+              'New position: "top" (move to leftmost), "bottom" (move to rightmost), or a numeric string (e.g. "1536"). To place between two lists, use the average of their pos values.'
+            ),
+        },
+      },
+      async ({ listId, position }) => {
+        try {
+          const parsedPosition = position === 'top' || position === 'bottom' ? position : Number(position);
+          const list = await this.trelloClient.updateListPosition(listId, parsedPosition);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(list, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
     // Get cards assigned to current user
     this.server.registerTool(
       'get_my_cards',
@@ -432,12 +483,65 @@ class TrelloServer {
       }
     );
 
-    // Attach image data to card (for base64/data URL uploads)
+    // Attach arbitrary binary data to a card (base64 or data URL)
+    this.server.registerTool(
+      'attach_data_to_card',
+      {
+        title: 'Attach Data to Card',
+        description:
+          'Attach binary data (image, markdown, PDF, text, etc.) to a card from base64-encoded data or a data URL. Use this for any non-image content. For image/screenshot uploads with PNG defaults, see attach_image_data_to_card.',
+        inputSchema: {
+          boardId: z
+            .string()
+            .optional()
+            .describe(
+              'ID of the Trello board where the card exists (uses default if not provided)'
+            ),
+          cardId: z.string().describe('ID of the card to attach the data to'),
+          data: z
+            .string()
+            .describe(
+              'Base64-encoded data or a data URL (e.g. data:text/markdown;base64,...). Any content type, not just images.'
+            ),
+          name: z
+            .string()
+            .optional()
+            .describe(
+              'Filename for the attachment, including extension (e.g. "notes.md", "report.pdf"). Defaults to "attachment-<timestamp>".'
+            ),
+          mimeType: z
+            .string()
+            .optional()
+            .describe(
+              'MIME type of the data (e.g. "text/markdown", "application/pdf", "image/png"). Recommended for correct rendering in Trello. If omitted, inferred from a data URL prefix or the filename extension; falls back to "application/octet-stream".'
+            ),
+        },
+      },
+      async ({ boardId, cardId, data, name, mimeType }) => {
+        try {
+          const attachment = await this.trelloClient.attachImageDataToCard(
+            boardId,
+            cardId,
+            data,
+            name,
+            mimeType
+          );
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(attachment, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    // Attach image data to card (image-flavored convenience over attach_data_to_card)
     this.server.registerTool(
       'attach_image_data_to_card',
       {
         title: 'Attach Image Data to Card',
-        description: 'Attach an image to a card from base64 data or data URL (for screenshot uploads)',
+        description:
+          'Attach an image to a card from base64 data or a data URL. Image-flavored convenience over attach_data_to_card: defaults assume PNG when mimeType/name are omitted, suitable for screenshot pasting. For non-image content, use attach_data_to_card.',
         inputSchema: {
           boardId: z
             .string()
@@ -981,20 +1085,70 @@ class TrelloServer {
       'update_checklist_item',
       {
         title: 'Update Checklist Item',
-        description: 'Update a checklist item state (mark as complete or incomplete)',
+        description: 'Update a checklist item name, state, position, due date, reminder, or assigned member',
         inputSchema: {
           cardId: z.string().describe('ID of the card containing the checklist item'),
           checkItemId: z.string().describe('ID of the checklist item to update'),
           state: z
             .enum(['complete', 'incomplete'])
+            .optional()
             .describe('New state for the checklist item'),
+          name: z.string().optional().describe('New text for the checklist item'),
+          pos: z
+            .union([z.number(), z.enum(['top', 'bottom'])])
+            .optional()
+            .describe('New position for the checklist item'),
+          due: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('New due date for the checklist item in ISO 8601 format, or null to clear it'),
+          dueReminder: z
+            .number()
+            .nullable()
+            .optional()
+            .describe('Reminder offset in minutes before due date, or null to clear it'),
+          idMember: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Member ID to assign to the checklist item, or null to clear it'),
         },
       },
-      async ({ cardId, checkItemId, state }) => {
+      async ({ cardId, checkItemId, name, state, pos, due, dueReminder, idMember }) => {
         try {
-          const item = await this.trelloClient.updateChecklistItem(cardId, checkItemId, state);
+          const item = await this.trelloClient.updateChecklistItem(cardId, checkItemId, {
+            name,
+            state,
+            pos,
+            due,
+            dueReminder,
+            idMember,
+          });
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(item, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    this.server.registerTool(
+      'delete_checklist_item',
+      {
+        title: 'Delete Checklist Item',
+        description: 'Delete a checklist item from a card',
+        inputSchema: {
+          cardId: z.string().describe('ID of the card containing the checklist item'),
+          checkItemId: z.string().describe('ID of the checklist item to delete'),
+        },
+      },
+      async ({ cardId, checkItemId }) => {
+        try {
+          const deleted = await this.trelloClient.deleteChecklistItem(cardId, checkItemId);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ deleted }, null, 2) }],
           };
         } catch (error) {
           return this.handleError(error);
@@ -1171,7 +1325,6 @@ class TrelloServer {
       }
     );
 
-
     // Custom field tools
     this.server.registerTool(
       'get_board_custom_fields',
@@ -1241,6 +1394,146 @@ class TrelloServer {
       }
     );
 
+    // Copy a card (supports cross-board copy)
+    this.server.registerTool(
+      'copy_card',
+      {
+        title: 'Copy Card',
+        description:
+          'Copy/duplicate a Trello card to any list (even on a different board). Copies all properties by default including checklists, attachments, comments, labels, etc.',
+        inputSchema: {
+          sourceCardId: z.string().describe('ID of the source card to copy'),
+          listId: z
+            .string()
+            .describe('ID of the destination list (can be on a different board)'),
+          name: z
+            .string()
+            .optional()
+            .describe('Override the name of the copied card (defaults to source card name)'),
+          description: z
+            .string()
+            .optional()
+            .describe('Override the description of the copied card'),
+          keepFromSource: z
+            .string()
+            .optional()
+            .describe(
+              'Comma-separated list of properties to copy: "all" (default), or any combination of: attachments, checklists, comments, customFields, due, start, labels, members, stickers'
+            ),
+          pos: z
+            .string()
+            .optional()
+            .describe('Position of the new card: "top", "bottom", or a positive float'),
+        },
+      },
+      async ({ sourceCardId, listId, name, description, keepFromSource, pos }) => {
+        try {
+          const card = await this.trelloClient.copyCard({
+            sourceCardId,
+            listId,
+            name,
+            description,
+            keepFromSource,
+            pos,
+          });
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(card, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    // Copy a checklist from one card to another
+    this.server.registerTool(
+      'copy_checklist',
+      {
+        title: 'Copy Checklist',
+        description:
+          'Copy a checklist (with all its items) from one card to another. Works across different boards.',
+        inputSchema: {
+          sourceChecklistId: z
+            .string()
+            .describe('ID of the source checklist to copy'),
+          cardId: z
+            .string()
+            .describe('ID of the destination card to copy the checklist to'),
+          name: z
+            .string()
+            .optional()
+            .describe('Override the name of the copied checklist (defaults to source checklist name)'),
+          pos: z
+            .string()
+            .optional()
+            .describe('Position of the new checklist: "top", "bottom", or a positive number'),
+        },
+      },
+      async ({ sourceChecklistId, cardId, name, pos }) => {
+        try {
+          const checklist = await this.trelloClient.copyChecklist({
+            sourceChecklistId,
+            cardId,
+            name,
+            pos,
+          });
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(checklist, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    // Add multiple cards to a list
+    this.server.registerTool(
+      'add_cards_to_list',
+      {
+        title: 'Add Cards to List',
+        description:
+          'Add multiple cards to a list in one operation. Cards are created sequentially (Trello API does not support batch writes). Rate limiting is handled automatically.',
+        inputSchema: {
+          listId: z.string().describe('ID of the list to add cards to'),
+          cards: z
+            .array(
+              z.object({
+                name: z.string().describe('Name of the card'),
+                description: z.string().optional().describe('Description of the card'),
+                dueDate: z
+                  .string()
+                  .optional()
+                  .describe('Due date for the card (ISO 8601 format)'),
+                start: z
+                  .string()
+                  .optional()
+                  .describe('Start date for the card (YYYY-MM-DD format)'),
+                labels: z
+                  .array(z.string())
+                  .optional()
+                  .describe('Array of label IDs to apply to the card'),
+              })
+            )
+            .describe('Array of cards to create (max 50)'),
+        },
+      },
+      async ({ listId, cards }) => {
+        try {
+          const results = await this.trelloClient.batchAddCards(listId, cards);
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify(results, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
     // Card history tool
     this.server.registerTool(
       'get_card_history',
@@ -1266,6 +1559,57 @@ class TrelloServer {
           const history = await this.trelloClient.getCardHistory(cardId, filter, limit);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(history, null, 2) }],
+          };
+        } catch (error) {
+          return this.handleError(error);
+        }
+      }
+    );
+
+    // Download attachment tool
+    this.server.registerTool(
+      'download_attachment',
+      {
+        title: 'Download Attachment',
+        description: 'Download an attachment from a card. Returns base64-encoded data that can be saved or viewed.',
+        inputSchema: {
+          cardId: z.string().describe('ID of the card containing the attachment'),
+          attachmentId: z.string().describe('ID of the attachment to download'),
+        },
+      },
+      async ({ cardId, attachmentId }) => {
+        try {
+          const result = await this.trelloClient.downloadAttachment(cardId, attachmentId);
+
+          // For images, return as image content type for direct viewing
+          if (result.mimeType.startsWith('image/')) {
+            return {
+              content: [
+                {
+                  type: 'image' as const,
+                  data: result.data,
+                  mimeType: result.mimeType,
+                },
+                {
+                  type: 'text' as const,
+                  text: `Downloaded: ${result.fileName} (${result.mimeType})`,
+                },
+              ],
+            };
+          }
+
+          // For non-images, return base64 data as text
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  fileName: result.fileName,
+                  mimeType: result.mimeType,
+                  data: result.data,
+                }, null, 2),
+              },
+            ],
           };
         } catch (error) {
           return this.handleError(error);
